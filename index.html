@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeNest - 密码管理</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-screen" id="loginScreen">
+        <div class="logo-container">
+            <div class="ios-icon shield-icon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    <path d="M9 12l2 2 4-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                </svg>
+            </div>
+            <h1 class="logo-title">SafeNest</h1>
+            <p class="logo-subtitle">安全 · 简洁 · 自然</p>
+        </div>
+
+        <div class="login-box">
+            <div id="setupMode">
+                <div class="input-group">
+                    <label>设置主密码</label>
+                    <input type="password" id="masterPassword" placeholder="请输入主密码（至少8位）" onkeypress="if(event.key==='Enter') login()">
+                </div>
+                <div class="input-group">
+                    <label>确认主密码</label>
+                    <input type="password" id="confirmPassword" placeholder="再次输入主密码" onkeypress="if(event.key==='Enter') login()">
+                </div>
+                <button class="btn-primary" onclick="login()">创建账户</button>
+            </div>
+
+            <div id="unlockMode" style="display: none;">
+                <div class="input-group">
+                    <label>主密码</label>
+                    <input type="password" id="unlockPassword" placeholder="请输入主密码" onkeypress="if(event.key==='Enter') login()">
+                </div>
+                <button class="btn-primary" onclick="login()">解锁</button>
+                <p class="hint-text">第 <span id="attemptCount">1</span> 次尝试</p>
+            </div>
+
+            <p class="error-msg" id="loginError"></p>
+        </div>
+
+        <p class="hint-text">
+            所有数据仅在本地加密存储
+            <br>
+            <span class="reset-link" onclick="showResetModal()">忘记密码？重置系统</span>
+        </p>
+    </div>
+
+    <!-- Reset Confirm Modal -->
+    <div class="modal-overlay" id="resetModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">⚠️ 重置系统</h3>
+                <button class="modal-close" onclick="closeResetModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p class="confirm-text">
+                    重置系统将清除所有已存储的密码数据，包括主密码。此操作<strong>不可恢复</strong>。
+                </p>
+                <p class="confirm-text">
+                    如果您曾经导出过备份数据，可以在重置后通过导入功能恢复。
+                </p>
+                <div class="danger-zone">
+                    <h4>⚠️ 危险操作</h4>
+                    <p>确认要清除所有数据并重新开始吗？</p>
+                    <button class="btn-danger" onclick="confirmReset()">确认重置系统</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="app-container" id="appContainer">
+        <header class="app-header">
+            <div class="header-brand">
+                <div class="ios-icon-sm">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <path d="M9 12l2 2 4-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    </svg>
+                </div>
+                <h1 class="header-title">SafeNest</h1>
+            </div>
+            <div class="header-actions">
+                <span class="lock-timer" id="lockTimer">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span id="timerText">4:59</span>
+                </span>
+                <div class="theme-switcher">
+                    <button class="theme-btn" onclick="toggleThemeDropdown()" title="切换主题">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>
+                    </button>
+                    <div class="theme-dropdown" id="themeDropdown">
+                        <div class="theme-option" data-theme="" onclick="setTheme('')"><span class="theme-color-dot theme-dot-green"></span> 清新绿</div>
+                        <div class="theme-option" data-theme="blue" onclick="setTheme('blue')"><span class="theme-color-dot theme-dot-blue"></span> 天空蓝</div>
+                        <div class="theme-option" data-theme="purple" onclick="setTheme('purple')"><span class="theme-color-dot theme-dot-purple"></span> 优雅紫</div>
+                        <div class="theme-option" data-theme="orange" onclick="setTheme('orange')"><span class="theme-color-dot theme-dot-orange"></span> 暖阳橙</div>
+                        <div class="theme-option" data-theme="dark" onclick="setTheme('dark')"><span class="theme-color-dot theme-dot-dark"></span> 暗夜绿</div>
+                        <div class="theme-option" data-theme="midnight" onclick="setTheme('midnight')"><span class="theme-color-dot theme-dot-midnight"></span> 午夜蓝</div>
+                    </div>
+                </div>
+                <button class="btn-icon" onclick="showImportPreviewModal()" title="导入文件(JSON/XML/Excel)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                </button>
+                <button class="btn-icon" onclick="exportData()" title="导出数据">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                </button>
+                <button class="btn-icon" onclick="toggleBatchMode()" title="批量选择">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                </button>
+                <button class="btn-icon" onclick="lock()" title="立即锁定">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="toolbar">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="搜索网站、用户名..." oninput="renderPasswords()">
+            </div>
+            <div class="filter-tags" id="filterTags">
+                <span class="tag active" data-category="all" onclick="filterCategory('all')">全部</span>
+                <span class="tag" data-category="work" onclick="filterCategory('work')">工作</span>
+                <span class="tag" data-category="personal" onclick="filterCategory('personal')">个人</span>
+                <span class="tag" data-category="finance" onclick="filterCategory('finance')">金融</span>
+                <span class="tag" data-category="social" onclick="filterCategory('social')">社交</span>
+                <span class="tag" data-category="other" onclick="filterCategory('other')">其他</span>
+                <span class="tag" style="background:transparent;border-style:dashed;" onclick="showAddCategoryModal()" title="添加自定义分类">+</span>
+            </div>
+        </div>
+
+        <!-- Batch Operations Toolbar -->
+        <div class="batch-toolbar" id="batchToolbar" style="display: none;">
+            <div class="batch-left">
+                <label class="batch-checkbox-label">
+                    <input type="checkbox" id="selectAllBatch" onchange="toggleSelectAllBatch()">
+                    <span>全选</span>
+                </label>
+                <span class="batch-count" id="batchCount">已选择 0 条</span>
+            </div>
+            <div class="batch-actions">
+                <button class="batch-btn" onclick="cancelBatchSelection()">取消</button>
+                <button class="batch-btn batch-delete" onclick="showBatchDeleteVerify()" id="batchDeleteBtn" disabled>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    删除选中
+                </button>
+            </div>
+        </div>
+
+        <div class="password-grid" id="passwordGrid">
+            <!-- Password cards will be rendered here -->
+        </div>
+
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-icon">🌱</div>
+            <div class="empty-title">还没有保存的密码</div>
+            <div class="empty-text">点击右下角按钮添加您的第一个密码</div>
+        </div>
+
+        <button class="fab" onclick="showAddModal()">+</button>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">添加密码</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>网站/应用名称 *</label>
+                    <input type="text" id="entryTitle" placeholder="例如：GitHub">
+                </div>
+                <div class="form-group">
+                    <label>分类</label>
+                    <select id="entryCategory">
+                        <option value="work">工作</option>
+                        <option value="personal">个人</option>
+                        <option value="finance">金融</option>
+                        <option value="social">社交</option>
+                        <option value="other">其他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="entryUsername" placeholder="您的用户名或邮箱">
+                </div>
+                <div class="form-group">
+                    <label>密码 *</label>
+                    <div class="password-input-group">
+                        <input type="text" id="entryPassword" placeholder="输入或生成密码" oninput="checkStrength()">
+                        <button class="btn-secondary" onclick="generatePassword()">生成</button>
+                    </div>
+                    <div class="strength-bar">
+                        <div class="strength-fill" id="strengthFill"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>备注</label>
+                    <input type="text" id="entryNotes" placeholder="可选：添加备注信息">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeModal()">取消</button>
+                <button class="btn-save" onclick="saveEntry()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Verify Modal -->
+    <div class="modal-overlay" id="exportVerifyModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">🔐 验证身份</h3>
+                <button class="modal-close" onclick="closeExportVerifyModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: var(--text-secondary); font-size: 0.9rem;">
+                    导出数据需要验证主密码，以确保数据安全。
+                </p>
+                <div class="form-group">
+                    <label>主密码</label>
+                    <input type="password" id="exportVerifyPassword" placeholder="请输入主密码" onkeypress="if(event.key==='Enter') confirmExportVerify()">
+                </div>
+                <p class="error-msg" id="exportVerifyError" style="text-align: left; margin-top: 10px;"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeExportVerifyModal()">取消</button>
+                <button class="btn-save" onclick="confirmExportVerify()">验证并导出</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Markdown Modal -->
+    <div class="modal-overlay" id="exportMarkdownModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title">📄 导出 Markdown</h3>
+                <button class="modal-close" onclick="closeExportMarkdownModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: var(--text-secondary); font-size: 0.9rem;">
+                    以下是以 Markdown 格式导出的密码数据。您可以复制保存为 .md 文件，稍后可以通过导入功能恢复。
+                </p>
+                <textarea class="data-textarea" id="exportMarkdownTextarea" readonly style="min-height: 250px;"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeExportMarkdownModal()">关闭</button>
+                <button class="btn-save" onclick="downloadMarkdownExport()">下载 .md 文件</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Preview Modal -->
+    <div class="modal-overlay" id="importPreviewModal">
+        <div class="modal" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 class="modal-title">📥 导入数据预览</h3>
+                <button class="modal-close" onclick="closeImportPreviewModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="import-file-input">
+                    <label class="import-file-btn" onclick="document.getElementById('importFile').click()">
+                        📁 选择文件 (Markdown / JSON / XML / CSV)
+                    </label>
+                    <input type="file" id="importFile" accept=".md,.json,.xml,.csv" onchange="handleImportFile(event)">
+                    <div class="import-format-hint">支持格式：Markdown (.md)、JSON、XML、CSV</div>
+                </div>
+                <div id="importPreviewContainer" style="display: none;">
+                    <div class="import-stats" id="importStats"></div>
+                    <div style="max-height: 350px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+                        <table class="import-preview-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;"><input type="checkbox" id="selectAllImport" checked onchange="toggleSelectAllImport()"></th>
+                                    <th>网站/应用</th>
+                                    <th>用户名</th>
+                                    <th>分类</th>
+                                    <th>备注</th>
+                                    <th style="width: 100px;">冲突处理</th>
+                                </tr>
+                            </thead>
+                            <tbody id="importPreviewBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="importEmptyState" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    <div style="font-size: 3rem; margin-bottom: 15px;">📂</div>
+                    <div>请选择要导入的文件</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeImportPreviewModal()">取消</button>
+                <button class="btn-save" id="confirmImportBtn" onclick="confirmImport()" disabled>确认导入</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Management Modal -->
+    <div class="modal-overlay" id="categoryModal">
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3 class="modal-title">🏷️ 管理分类</h3>
+                <button class="modal-close" onclick="closeCategoryModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>系统分类（不可删除）</label>
+                    <div id="systemCategories" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:15px;">
+                        <span class="tag">工作</span>
+                        <span class="tag">个人</span>
+                        <span class="tag">金融</span>
+                        <span class="tag">社交</span>
+                        <span class="tag">其他</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>自定义分类</label>
+                    <div id="customCategories" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:15px;min-height:30px;">
+                        <span style="color:var(--text-secondary);font-size:0.85rem;">暂无自定义分类</span>
+                    </div>
+                </div>
+                <hr style="border:0;border-top:1px solid var(--border);margin:20px 0;">
+                <div class="form-group">
+                    <label>添加新分类</label>
+                    <div style="display:flex;gap:10px;">
+                        <input type="text" id="newCategoryName" placeholder="输入分类名称" maxlength="10" style="flex:1;" onkeypress="if(event.key==='Enter') addNewCategory()">
+                        <button class="btn-secondary" onclick="addNewCategory()">添加</button>
+                    </div>
+                    <p class="error-msg" id="categoryError" style="text-align:left;margin-top:8px;"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeCategoryModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Setup Security Question Modal (shown during initial setup) -->
+    <div class="modal-overlay" id="securitySetupModal" style="z-index: 3000;">
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3 class="modal-title">🔐 设置安全验证</h3>
+            </div>
+            <div class="modal-body">
+                <div class="security-hint">
+                    <strong>设置二次验证问题</strong>
+                    用于删除重要数据时的额外保护
+                </div>
+                <div class="form-group">
+                    <label>验证问题 *</label>
+                    <input type="text" id="setupSecurityQuestion" placeholder="例如：我的第一只宠物叫什么名字？" onkeypress="if(event.key==='Enter') document.getElementById('setupSecurityAnswer').focus()">
+                </div>
+                <div class="form-group">
+                    <label>问题答案 *</label>
+                    <input type="text" id="setupSecurityAnswer" placeholder="请输入答案" onkeypress="if(event.key==='Enter') saveSecuritySetup()">
+                    <p style="font-size:0.8rem;color:var(--text-secondary);margin-top:6px;">请牢记答案，删除数据时需要验证</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <p class="error-msg" id="securitySetupError" style="flex:1;text-align:left;margin:0;"></p>
+                <button class="btn-save" onclick="saveSecuritySetup()">保存并继续</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batch Delete Verify Modal -->
+    <div class="modal-overlay" id="batchDeleteVerifyModal" style="z-index: 2500;">
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3 class="modal-title">⚠️ 安全验证</h3>
+                <button class="modal-close" onclick="closeBatchDeleteVerify()">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: var(--text-secondary); font-size: 0.9rem;">
+                    批量删除需要双重验证，以确保数据安全。
+                </p>
+                <div class="form-group">
+                    <label>主密码</label>
+                    <input type="password" id="batchDeletePassword" placeholder="请输入主密码" onkeypress="if(event.key==='Enter') document.getElementById('batchDeleteAnswer').focus()">
+                </div>
+                <div class="form-group" id="securityQuestionDisplay" style="display:none;">
+                    <label>二次验证问题</label>
+                    <p id="batchDeleteQuestion" style="font-size:0.95rem;color:var(--text-primary);padding:8px 0;"></p>
+                </div>
+                <div class="form-group">
+                    <label>问题答案</label>
+                    <input type="text" id="batchDeleteAnswer" placeholder="请输入答案" onkeypress="if(event.key==='Enter') confirmBatchDelete()">
+                </div>
+                <p class="error-msg" id="batchDeleteError" style="text-align: left; margin-top: 10px;"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeBatchDeleteVerify()">取消</button>
+                <button class="btn-danger" onclick="confirmBatchDelete()" style="background:var(--danger);color:white;border:none;padding:12px 24px;border-radius:10px;cursor:pointer;">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
