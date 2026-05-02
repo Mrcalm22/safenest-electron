@@ -1,82 +1,86 @@
 # SafeNest
 
-A secure, local-first password manager built with **Electron + TypeScript + Vite**.
+一款基于 **Electron + TypeScript + Vite** 构建的安全、本地优先的密码管理器。
 
-All your passwords are encrypted with **AES-256-GCM** and stored locally in an **SQLite** database. No cloud, no accounts, no data leaves your machine.
-
----
-
-## Features
-
-- **AES-256-GCM encryption** with Argon2id password hashing
-- **Recovery key** system (12-word passphrase) for password recovery without data loss
-- **Security question** based reset
-- **Hard reset** to clear all local data for a fresh start
-- **Password generator** (random + Diceware passphrase)
-- **Batch select**, delete, export
-- **Grid / list** dual view mode
-- **Theme** system
-- **Import / export** (Markdown, JSON, CSV)
-- **5-minute auto-lock** timer
+所有密码均采用 **AES-256-GCM** 加密，并存储在本地 **SQLite** 数据库中。无需云端，无需账户，数据绝不离机。
 
 ---
 
-## Architecture
+## 功能特性
 
-SafeNest follows Electron's security best practices: `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`. All cryptographic operations run in the **Main Process** (Node.js), protected from the renderer. The renderer only communicates via a type-safe `contextBridge` API.
-
-![Architecture](docs/safenest-arch.png)
-
----
-
-## User Flow
-
-![User Flow](docs/safenest-user-flow.png)
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Framework | Electron 41 |
-| Build Tool | Vite + electron-vite |
-| Language | TypeScript (strict) |
-| Database | node:sqlite (DatabaseSync) |
-| Crypto | Node.js crypto (AES-256-GCM, scrypt, randomBytes) |
-| Password Hash | @node-rs/argon2 (Argon2id) |
+- **AES-256-GCM 加密**，配合 Argon2id 密码哈希
+- **恢复密钥** 系统（12 词助记词），可在不丢失数据的情况下重置密码
+- **安全问题** 重置方式
+- **硬重置**，彻底清除本地数据以重新开始
+- **密码生成器**（随机密码 + Diceware 短语）
+- **批量选择**、删除、导出
+- **网格 / 列表** 双视图模式
+- **主题** 系统
+- **导入 / 导出**（Markdown、JSON、CSV）
+- **5 分钟自动锁定** 计时器
 
 ---
 
-## Security Design
+## 技术架构
 
-- **Master password** is hashed with Argon2id (memoryCost: 65536, timeCost: 3, parallelism: 4)
-- **Encryption key** is derived from password via scrypt
-- **Vault data** is encrypted with AES-256-GCM (includes auth tag)
-- **Memory clearing**: sensitive Buffer/Uint8Array data is explicitly zeroed after use (`buffer.fill(0)`)
-- **Recovery key**: encrypts the master password (not the data directly), allowing password reset while preserving all entries
-- **No network requests** for password checking — fully offline
+SafeNest 遵循 Electron 安全最佳实践：`contextIsolation: true`、`sandbox: true`、`nodeIntegration: false`。所有加密操作均在 **主进程**（Node.js）中运行，与渲染进程隔离。渲染进程仅通过类型安全的 `contextBridge` API 进行通信。
+
+![架构图](docs/safenest-arch.png)
 
 ---
 
-## Development
+## 用户流程
+
+![用户流程图](docs/safenest-user-flow.png)
+
+---
+
+## 技术栈
+
+| 层级 | 技术 |
+|------|------|
+| 框架 | Electron 41 |
+| 构建工具 | Vite + electron-vite |
+| 语言 | TypeScript（严格模式）|
+| 数据库 | node:sqlite（DatabaseSync）|
+| 加密 | Node.js crypto（AES-256-GCM、scrypt、randomBytes）|
+| 密码哈希 | @node-rs/argon2（Argon2id）|
+
+---
+
+## 安全设计
+
+- **主密码** 使用 Argon2id 哈希（memoryCost: 65536，timeCost: 3，parallelism: 4）
+- **加密密钥** 通过 scrypt 从密码派生
+- **保险库数据** 使用 AES-256-GCM 加密（包含认证标签）
+- **内存清零**：敏感的 Buffer/Uint8Array 数据在使用后显式清零（`buffer.fill(0)`）
+- **恢复密钥**：加密主密码本身（而非直接加密数据），允许在保留所有条目的前提下重置密码
+- **无网络请求** 用于密码检查 —— 完全离线运行
+
+---
+
+## 开发
 
 ```bash
-# Install dependencies
+# 安装依赖
 npm install
 
-# Dev mode
+# 开发模式
 npm run dev
 
-# Build
+# 构建
 npm run build
 
-# Type check
+# 类型检查
 npx tsc --noEmit
 ```
 
 ---
 
-## License
+## 许可证
 
 MIT
+
+---
+
+> [English Version](README_EN.md)
