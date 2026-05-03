@@ -1,3 +1,6 @@
+
+> [中文版](README.md)
+
 # SafeNest
 
 A secure, local-first password manager built with **Electron + TypeScript + Vite**.
@@ -82,5 +85,3 @@ npx tsc --noEmit
 MIT
 
 ---
-
-> [中文版](README.md)
