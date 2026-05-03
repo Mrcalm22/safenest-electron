@@ -1,8 +1,39 @@
 import type { PasswordEntry, ImportItem } from '../types'
+import { t, setLang, loadLang, getLang, translateDOM, translateAttrs } from './i18n'
+import type { Language } from './i18n/types'
 
 const LOCK_TIMEOUT = 5 * 60 * 1000
-const SYSTEM_CATEGORIES: Record<string, string> = {
-  work: '工作', personal: '个人', finance: '金融', social: '社交', other: '其他'
+const SYSTEM_CATEGORY_KEYS = ['work', 'personal', 'finance', 'social', 'other']
+
+function updateLangButtons(): void {
+  const lang = getLang()
+  document.querySelectorAll('.lang-btn, .lang-icon').forEach(btn => {
+    const el = btn as HTMLButtonElement
+    el.classList.toggle('active', el.dataset.lang === lang)
+  })
+}
+
+async function switchLanguage(lang: string): Promise<void> {
+  if (lang !== 'zh-CN' && lang !== 'en' && lang !== 'de') return
+  await setLang(lang as Language)
+  translateDOM()
+  translateAttrs()
+  // Re-render dynamic content
+  renderPasswords()
+  renderFilterTags()
+  renderCategorySelect()
+  renderCategoryManagement()
+  updateBatchToolbar(passwords)
+}
+
+function getSystemCategories(): Record<string, string> {
+  return {
+    work: t('category_work'),
+    personal: t('category_personal'),
+    finance: t('category_finance'),
+    social: t('category_social'),
+    other: t('category_other')
+  }
 }
 
 let currentPassword = ''
@@ -22,6 +53,8 @@ let exportMode: 'all' | 'batch' = 'all'
 let viewMode: 'grid' | 'list' = 'grid'
 
 async function init() {
+  await loadLang()
+  updateLangButtons()
   await loadTheme()
   await loadCustomCategories()
   await loadSecurityQuestion()
@@ -45,8 +78,8 @@ async function login() {
   if (isSetup) {
     const pwd = (document.getElementById('masterPassword') as HTMLInputElement).value
     const confirm = (document.getElementById('confirmPassword') as HTMLInputElement).value
-    if (pwd.length < 8) { errorEl.textContent = '主密码至少需要8位'; return }
-    if (pwd !== confirm) { errorEl.textContent = '两次输入的密码不一致'; return }
+    if (pwd.length < 8) { errorEl.textContent = t('error_passwordTooShort'); return }
+    if (pwd !== confirm) { errorEl.textContent = t('error_passwordMismatch'); return }
     currentPassword = pwd
     const result = await window.electronAPI.vault.setup(pwd)
     if (result.success) {
@@ -54,7 +87,7 @@ async function login() {
       await showApp()
       showSecuritySetupModal()
     } else {
-      errorEl.textContent = '创建失败，请重试'
+      errorEl.textContent = t('error_createFailed')
     }
   } else {
     const pwd = (document.getElementById('unlockPassword') as HTMLInputElement).value
@@ -62,14 +95,14 @@ async function login() {
     if (result.success && result.passwords !== null) {
       currentPassword = pwd
       passwords = result.passwords
-      if (result.migrated) showToast('数据已自动升级到新版加密格式')
+      if (result.migrated) showToast(t('toast_migrated'))
       await showApp()
     } else {
       failedAttempts++
       const attemptCount = document.getElementById('attemptCount') as HTMLSpanElement
       attemptCount.textContent = String(failedAttempts + 1)
       if (failedAttempts >= 5) {
-        errorEl.textContent = '错误次数过多，请30秒后再试'
+        errorEl.textContent = t('error_tooManyAttempts')
         const btn = document.querySelector('.btn-primary') as HTMLButtonElement
         btn.disabled = true
         setTimeout(() => {
@@ -79,7 +112,7 @@ async function login() {
           errorEl.textContent = ''
         }, 30000)
       } else {
-        errorEl.textContent = '密码错误，请重试'
+        errorEl.textContent = t('error_wrongPassword')
       }
     }
   }
@@ -131,11 +164,11 @@ async function saveCustomCategories() {
 }
 
 function getAllCategories(): Record<string, string> {
-  return { ...SYSTEM_CATEGORIES, ...Object.fromEntries(customCategories.map(c => [c.id, c.name])) }
+  return { ...getSystemCategories(), ...Object.fromEntries(customCategories.map(c => [c.id, c.name])) }
 }
 
 function getCategoryName(catId: string): string {
-  return getAllCategories()[catId] || catId || '其他'
+  return getAllCategories()[catId] || catId || t('category_other')
 }
 
 function showAddCategoryModal() {
@@ -152,7 +185,7 @@ function closeCategoryModal() {
 function renderCategoryManagement() {
   const container = document.getElementById('customCategories') as HTMLDivElement
   if (customCategories.length === 0) {
-    container.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem;">暂无自定义分类</span>'
+    container.innerHTML = `<span style="color:var(--text-secondary);font-size:0.85rem;">${t('categoryModal_noCustom')}</span>`
   } else {
     container.innerHTML = customCategories.map(cat =>
       `<span class="tag" style="display:inline-flex;align-items:center;gap:6px;padding-right:8px;">\n        ${escapeHtml(cat.name)}\n        <span style="cursor:pointer;font-size:1.1rem;color:var(--danger);" onclick="deleteCategory('${cat.id}')">×</span>\n      </span>`
@@ -163,10 +196,10 @@ function renderCategoryManagement() {
 async function addNewCategory() {
   const name = (document.getElementById('newCategoryName') as HTMLInputElement).value.trim()
   const errorEl = document.getElementById('categoryError') as HTMLParagraphElement
-  if (!name) { errorEl.textContent = '请输入分类名称'; return }
-  if (name.length > 10) { errorEl.textContent = '分类名称最多10个字符'; return }
-  if (Object.values(SYSTEM_CATEGORIES).includes(name) || customCategories.some(c => c.name === name)) {
-    errorEl.textContent = '该分类名称已存在'; return
+  if (!name) { errorEl.textContent = t('error_categoryNameRequired'); return }
+  if (name.length > 10) { errorEl.textContent = t('error_categoryNameTooLong'); return }
+  if (Object.values(getSystemCategories()).includes(name) || customCategories.some(c => c.name === name)) {
+    errorEl.textContent = t('error_categoryExists'); return
   }
   const newCat = { id: 'custom_' + Date.now().toString(36), name }
   customCategories.push(newCat)
@@ -176,11 +209,11 @@ async function addNewCategory() {
   renderCategorySelect()
   ;(document.getElementById('newCategoryName') as HTMLInputElement).value = ''
   errorEl.textContent = ''
-  showToast('分类添加成功')
+  showToast(t('toast_categoryAdded'))
 }
 
 async function deleteCategory(catId: string) {
-  if (!confirm('删除此分类后，使用该分类的密码将显示为"其他"。确定删除吗？')) return
+  if (!confirm(t('confirm_deleteCategory'))) return
   customCategories = customCategories.filter(c => c.id !== catId)
   await saveCustomCategories()
   renderCategoryManagement()
@@ -194,11 +227,11 @@ async function deleteCategory(catId: string) {
 function renderFilterTags() {
   const container = document.getElementById('filterTags') as HTMLDivElement
   const allCats = getAllCategories()
-  let html = `<span class="tag ${currentCategory === 'all' ? 'active' : ''}" data-category="all" onclick="filterCategory('all')">全部</span>`
+  let html = `<span class="tag ${currentCategory === 'all' ? 'active' : ''}" data-category="all" onclick="filterCategory('all')">${t('category_all')}</span>`
   for (const [id, name] of Object.entries(allCats)) {
     html += `<span class="tag ${currentCategory === id ? 'active' : ''}" data-category="${id}" onclick="filterCategory('${id}')">${name}</span>`
   }
-  html += `<span class="tag" style="background:transparent;border-style:dashed;" onclick="showAddCategoryModal()" title="添加自定义分类">+</span>`
+  html += `<span class="tag" style="background:transparent;border-style:dashed;" onclick="showAddCategoryModal()" title="${t('category_addCustom')}">+</span>`
   container.innerHTML = html
 }
 
@@ -246,9 +279,9 @@ function renderGridView(filtered: PasswordEntry[]): string {
     const isSelected = selectedItems.has(p.id)
     const clickHandler = batchMode ? `toggleSelectItem('${p.id}')` : `togglePassword('${p.id}')`
     const checkbox = batchMode ? `<input type="checkbox" class="card-checkbox" ${isSelected ? "checked" : ""} onclick="event.stopPropagation(); toggleSelectItem('${p.id}')">` : ""
-    const userCopy = p.username ? `<button class="copy-btn" onclick="event.stopPropagation(); copyText('${escapeJs(p.username)}')">复制</button>` : ""
-    const notesField = p.notes ? `<div class="card-field"><label>备注</label><div class="field-text" style="font-size:0.85rem;color:var(--text-secondary);margin-top:4px">${escapeHtml(p.notes)}</div></div>` : ""
-    const deleteBtn = !batchMode ? `<button class="card-btn danger" onclick="event.stopPropagation(); deleteEntry('${p.id}')">删除</button>` : ""
+    const userCopy = p.username ? `<button class="copy-btn" onclick="event.stopPropagation(); copyText('${escapeJs(p.username)}')">${t('card_copyButton')}</button>` : ""
+    const notesField = p.notes ? `<div class="card-field"><label>${t('card_label_notes')}</label><div class="field-text" style="font-size:0.85rem;color:var(--text-secondary);margin-top:4px">${escapeHtml(p.notes)}</div></div>` : ""
+    const deleteBtn = !batchMode ? `<button class="card-btn danger" onclick="event.stopPropagation(); deleteEntry('${p.id}')">${t('card_delete')}</button>` : ""
     return `<div class="password-card ${isSelected ? "selected" : ""}" onclick="${clickHandler}">
       ${checkbox}
       <div class="card-header">
@@ -256,26 +289,26 @@ function renderGridView(filtered: PasswordEntry[]): string {
         <span class="card-category">${getCategoryName(p.category)}</span>
       </div>
       <div class="card-field">
-        <label>用户名</label>
+        <label>${t('card_label_username')}</label>
         <div class="card-field-value">
           <span class="field-text">${escapeHtml(p.username) || "-"}</span>
           ${userCopy}
         </div>
       </div>
       <div class="card-field">
-        <label>密码</label>
+        <label>${t('card_label_password')}</label>
         <div class="card-field-value">
           <span class="field-text ${p.showPassword ? "" : "field-masked"}" id="pwd-${p.id}">
             ${p.showPassword ? escapeHtml(p.password) : "••••••••"}
           </span>
-          <button class="copy-btn" onclick="event.stopPropagation(); copyText('${escapeJs(p.password)}')">复制</button>
+          <button class="copy-btn" onclick="event.stopPropagation(); copyText('${escapeJs(p.password)}')">${t('card_copyButton')}</button>
         </div>
       </div>
       ${notesField}
       ${renderLogInfo(p)}
       <div class="card-actions">
-        <button class="card-btn" onclick="event.stopPropagation(); copyEntry('${p.id}')">📋 复制</button>
-        <button class="card-btn" onclick="event.stopPropagation(); editEntry('${p.id}')">编辑</button>
+        <button class="card-btn" onclick="event.stopPropagation(); copyEntry('${p.id}')">📋 ${t('card_copyEntry')}</button>
+        <button class="card-btn" onclick="event.stopPropagation(); editEntry('${p.id}')">${t('card_edit')}</button>
         ${deleteBtn}
       </div>
     </div>`
@@ -284,18 +317,18 @@ function renderGridView(filtered: PasswordEntry[]): string {
 
 function renderListView(filtered: PasswordEntry[]): string {
   let html = `<div class="list-header">
-    <span class="list-col list-col-title">网站/应用</span>
-    <span class="list-col list-col-category">分类</span>
-    <span class="list-col list-col-username">用户名</span>
-    <span class="list-col list-col-password">密码</span>
-    <span class="list-col list-col-actions">操作</span>
+    <span class="list-col list-col-title">${t('list_header_website')}</span>
+    <span class="list-col list-col-category">${t('list_header_category')}</span>
+    <span class="list-col list-col-username">${t('list_header_username')}</span>
+    <span class="list-col list-col-password">${t('list_header_password')}</span>
+    <span class="list-col list-col-actions">${t('list_header_actions')}</span>
   </div>`
 
   html += filtered.map(p => {
     const isSelected = selectedItems.has(p.id)
     const clickHandler = batchMode ? `toggleSelectItem('${p.id}')` : `togglePassword('${p.id}')`
     const checkbox = batchMode ? `<input type="checkbox" class="list-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleSelectItem('${p.id}')">` : ''
-    const deleteBtn = !batchMode ? `<button class="copy-btn danger" onclick="event.stopPropagation(); deleteEntry('${p.id}')">删除</button>` : ''
+    const deleteBtn = !batchMode ? `<button class="copy-btn danger" onclick="event.stopPropagation(); deleteEntry('${p.id}')">${t('card_delete')}</button>` : ''
     return `<div class="password-list-item ${isSelected ? 'selected' : ''}" onclick="${clickHandler}">
       ${checkbox}
       <span class="list-col list-col-title">${escapeHtml(p.title)}</span>
@@ -303,8 +336,8 @@ function renderListView(filtered: PasswordEntry[]): string {
       <span class="list-col list-col-username">${escapeHtml(p.username) || '-'}</span>
       <span class="list-col list-col-password"><span class="field-text ${p.showPassword ? '' : 'field-masked'}" id="pwd-${p.id}">${p.showPassword ? escapeHtml(p.password) : '••••••••'}</span></span>
       <span class="list-col list-col-actions">
-        <button class="copy-btn" onclick="event.stopPropagation(); copyText('${escapeJs(p.password)}')">复制密码</button>
-        <button class="copy-btn" onclick="event.stopPropagation(); editEntry('${p.id}')">编辑</button>
+        <button class="copy-btn" onclick="event.stopPropagation(); copyText('${escapeJs(p.password)}')">${t('card_copyPassword')}</button>
+        <button class="copy-btn" onclick="event.stopPropagation(); editEntry('${p.id}')">${t('card_edit')}</button>
         ${deleteBtn}
       </span>
     </div>`
@@ -331,7 +364,7 @@ function toggleViewMode() {
   viewMode = viewMode === 'grid' ? 'list' : 'grid'
   renderPasswords()
   updateViewModeIcon()
-  showToast(viewMode === 'grid' ? '已切换到网格视图' : '已切换到列表视图')
+  showToast(viewMode === 'grid' ? t('viewMode_grid') : t('viewMode_list'))
 }
 
 function updateViewModeIcon() {
@@ -339,10 +372,10 @@ function updateViewModeIcon() {
   if (!icon) return
   if (viewMode === 'grid') {
     icon.innerHTML = '<line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>'
-    icon.parentElement?.setAttribute('title', '切换为列表视图')
+    icon.parentElement?.setAttribute('title', t('tooltip_switchToList'))
   } else {
     icon.innerHTML = '<rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>'
-    icon.parentElement?.setAttribute('title', '切换为网格视图')
+    icon.parentElement?.setAttribute('title', t('tooltip_switchToGrid'))
   }
 }
 
@@ -351,7 +384,7 @@ function toggleBatchMode() {
   batchMode = !batchMode
   if (!batchMode) selectedItems.clear()
   renderPasswords()
-  showToast(batchMode ? '已开启批量选择模式，点击卡片选择' : '已退出批量模式')
+  showToast(batchMode ? t('toast_batchModeOn') : t('toast_batchModeOff'))
 }
 
 function updateBatchToolbar(filtered: PasswordEntry[]) {
@@ -359,7 +392,7 @@ function updateBatchToolbar(filtered: PasswordEntry[]) {
   if (batchMode) {
     toolbar.style.display = 'flex'
     const count = selectedItems.size
-    ;(document.getElementById('batchCount') as HTMLSpanElement).textContent = `已选择 ${count} 条`
+    ;(document.getElementById('batchCount') as HTMLSpanElement).textContent = t('batch_count', { count: String(count) })
     ;(document.getElementById('batchDeleteBtn') as HTMLButtonElement).disabled = count === 0
     ;(document.getElementById('batchExportBtn') as HTMLButtonElement).disabled = count === 0
     const selectAll = document.getElementById('selectAllBatch') as HTMLInputElement
@@ -422,17 +455,17 @@ async function confirmBatchDelete() {
   const password = (document.getElementById('batchDeletePassword') as HTMLInputElement).value
   const answer = (document.getElementById('batchDeleteAnswer') as HTMLInputElement).value
   const errorEl = document.getElementById('batchDeleteError') as HTMLParagraphElement
-  if (!password) { errorEl.textContent = '请输入主密码'; return }
+  if (!password) { errorEl.textContent = t('error_passwordRequired'); return }
 
   const isValid = await window.electronAPI.crypto.verifyPassword(password, await window.electronAPI.vault.get('passwordHash') || '')
-  if (!isValid) { errorEl.textContent = '主密码错误'; return }
+  if (!isValid) { errorEl.textContent = t('error_wrongMasterPassword'); return }
 
   if (securityQuestion) {
-    if (!answer) { errorEl.textContent = '请输入安全验证答案'; return }
+    if (!answer) { errorEl.textContent = t('error_answerRequired'); return }
     const encoder = new TextEncoder()
     const answerHash = await crypto.subtle.digest('SHA-256', encoder.encode(answer.toLowerCase().trim()))
     const answerHex = Array.from(new Uint8Array(answerHash)).map(b => b.toString(16).padStart(2, '0')).join('')
-    if (answerHex !== securityAnswer) { errorEl.textContent = '安全验证答案错误'; return }
+    if (answerHex !== securityAnswer) { errorEl.textContent = t('error_wrongAnswer'); return }
   }
 
   const count = selectedItems.size
@@ -442,7 +475,7 @@ async function confirmBatchDelete() {
   await saveToStorage()
   closeBatchDeleteVerify()
   renderPasswords()
-  showToast(`已删除 ${count} 条记录`)
+  showToast(t('toast_deleted'))
 }
 
 // ===== Security Question =====
@@ -457,8 +490,8 @@ async function saveSecuritySetup() {
   const question = (document.getElementById('setupSecurityQuestion') as HTMLInputElement).value.trim()
   const answer = (document.getElementById('setupSecurityAnswer') as HTMLInputElement).value.trim()
   const errorEl = document.getElementById('securitySetupError') as HTMLParagraphElement
-  if (!question) { errorEl.textContent = '请输入验证问题'; return }
-  if (!answer) { errorEl.textContent = '请输入答案'; return }
+  if (!question) { errorEl.textContent = t('error_questionRequired'); return }
+  if (!answer) { errorEl.textContent = t('error_answerEmpty'); return }
 
   const encoder = new TextEncoder()
   const answerHash = await crypto.subtle.digest('SHA-256', encoder.encode(answer.toLowerCase()))
@@ -468,7 +501,7 @@ async function saveSecuritySetup() {
   await window.electronAPI.vault.set('safenest_security_question', question)
   await window.electronAPI.vault.set('safenest_security_answer', answerHex)
   ;(document.getElementById('securitySetupModal') as HTMLDivElement).classList.remove('active')
-  showToast('安全验证已设置')
+  showToast(t('toast_securitySetup'))
 }
 
 async function loadSecurityQuestion() {
@@ -480,7 +513,7 @@ async function loadSecurityQuestion() {
 // ===== Modal Functions =====
 function showAddModal() {
   editingId = null
-  ;(document.getElementById('modalTitle') as HTMLHeadingElement).textContent = '添加密码'
+  ;(document.getElementById('modalTitle') as HTMLHeadingElement).textContent = t('addModal_title')
   ;(document.getElementById('entryTitle') as HTMLInputElement).value = ''
   ;(document.getElementById('entryCategory') as HTMLSelectElement).value = 'work'
   ;(document.getElementById('entryUsername') as HTMLInputElement).value = ''
@@ -494,7 +527,7 @@ function editEntry(id: string) {
   const entry = passwords.find(p => p.id === id)
   if (!entry) return
   editingId = id
-  ;(document.getElementById('modalTitle') as HTMLHeadingElement).textContent = '编辑密码'
+  ;(document.getElementById('modalTitle') as HTMLHeadingElement).textContent = t('editModal_title')
   ;(document.getElementById('entryTitle') as HTMLInputElement).value = entry.title
   ;(document.getElementById('entryCategory') as HTMLSelectElement).value = entry.category
   ;(document.getElementById('entryUsername') as HTMLInputElement).value = entry.username
@@ -507,7 +540,7 @@ function editEntry(id: string) {
 async function saveEntry() {
   const title = (document.getElementById('entryTitle') as HTMLInputElement).value.trim()
   const password = (document.getElementById('entryPassword') as HTMLInputElement).value
-  if (!title || !password) { showToast('请填写必填项'); return }
+  if (!title || !password) { showToast(t('error_fillRequired')); return }
 
   const now = Date.now()
   const entry: PasswordEntry = {
@@ -531,15 +564,15 @@ async function saveEntry() {
   await saveToStorage()
   closeModal()
   renderPasswords()
-  showToast('保存成功')
+  showToast(t('toast_saveSuccess'))
 }
 
 async function deleteEntry(id: string) {
-  if (!confirm('确定要删除这个密码吗？此操作不可恢复。')) return
+  if (!confirm(t('confirm_deleteEntry'))) return
   passwords = passwords.filter(p => p.id !== id)
   await saveToStorage()
   renderPasswords()
-  showToast('已删除')
+  showToast(t('toast_deleted'))
 }
 
 function closeModal() { (document.getElementById('editModal') as HTMLDivElement).classList.remove('active') }
@@ -568,7 +601,7 @@ function checkStrength() {
 
 // ===== Import / Export =====
 async function exportData() {
-  if (passwords.length === 0) { showToast('没有可导出的数据'); return }
+  if (passwords.length === 0) { showToast(t('toast_noDataToExport')); return }
   exportMode = 'all'
   showExportVerify()
 }
@@ -586,13 +619,13 @@ function closeExportVerifyModal() {
 async function confirmExportVerify() {
   const password = (document.getElementById('exportVerifyPassword') as HTMLInputElement).value
   const errorEl = document.getElementById('exportVerifyError') as HTMLParagraphElement
-  if (!password) { errorEl.textContent = '请输入主密码'; return }
+  if (!password) { errorEl.textContent = t('error_passwordRequired'); return }
 
   const hashStr = await window.electronAPI.vault.get('passwordHash')
-  if (!hashStr) { errorEl.textContent = '无法验证'; return }
+  if (!hashStr) { errorEl.textContent = t('error_verificationFailed'); return }
 
   const valid = await window.electronAPI.crypto.verifyPassword(password, hashStr)
-  if (!valid) { errorEl.textContent = '密码错误'; return }
+  if (!valid) { errorEl.textContent = t('error_wrongMasterPassword'); return }
 
   closeExportVerifyModal()
 
@@ -600,7 +633,7 @@ async function confirmExportVerify() {
     ? passwords.filter(p => selectedItems.has(p.id))
     : passwords
 
-  if (entriesToExport.length === 0) { showToast('没有可导出的数据'); return }
+  if (entriesToExport.length === 0) { showToast(t('toast_noDataToExport')); return }
 
   const markdown = await generateMarkdownExport(entriesToExport)
   ;(document.getElementById('exportMarkdownTextarea') as HTMLTextAreaElement).value = markdown
@@ -608,24 +641,25 @@ async function confirmExportVerify() {
 }
 
 async function generateMarkdownExport(entries: PasswordEntry[]): Promise<string> {
-  const date = new Date().toLocaleString('zh-CN')
-  let markdown = `# SafeNest 密码导出\n\n`
-  markdown += `> 导出时间：${date}\n`
-  markdown += `> 条目数量：${entries.length}\n\n`
+  const localeMap: Record<string, string> = { 'zh-CN': 'zh-CN', 'en': 'en-US', 'de': 'de-DE' }
+  const date = new Date().toLocaleString(localeMap[getLang()] || 'zh-CN')
+  let markdown = `# ${t('export_title')}\n\n`
+  markdown += `> ${t('export_time')}：${date}\n`
+  markdown += `> ${t('export_count')}：${entries.length}\n\n`
   markdown += `---\n\n`
   entries.forEach((entry, index) => {
     markdown += `## ${index + 1}. ${entry.title}\n\n`
-    markdown += `- **名称**：${entry.title}\n`
-    markdown += `- **分类**：${getCategoryName(entry.category)}\n`
-    markdown += `- **用户**：${entry.username || '(空)'}\n`
-    markdown += `- **密码**：${entry.password}\n`
-    markdown += `- **备注**：${entry.notes || '(无)'}\n`
-    markdown += `- **创建时间**：${entry.createdAt ? formatDateTime(entry.createdAt) : '未知'}\n`
-    markdown += `- **修改时间**：${entry.updatedAt ? formatDateTime(entry.updatedAt) : '未知'}\n\n`
+    markdown += `- **${t('export_field_title')}**：${entry.title}\n`
+    markdown += `- **${t('export_field_category')}**：${getCategoryName(entry.category)}\n`
+    markdown += `- **${t('export_field_username')}**：${entry.username || t('export_empty')}\n`
+    markdown += `- **${t('export_field_password')}**：${entry.password}\n`
+    markdown += `- **${t('export_field_notes')}**：${entry.notes || t('export_none')}\n`
+    markdown += `- **${t('export_field_created')}**：${entry.createdAt ? formatDateTime(entry.createdAt) : t('date_unknown')}\n`
+    markdown += `- **${t('export_field_updated')}**：${entry.updatedAt ? formatDateTime(entry.updatedAt) : t('date_unknown')}\n\n`
     markdown += `---\n\n`
   })
-  markdown += `## 导入说明\n\n`
-  markdown += `此文件可以通过 SafeNest 的导入功能重新导入。导入时会检测名称冲突并提供处理选项。\n`
+  markdown += `## ${t('export_instructions')}\n\n`
+  markdown += `${t('export_instructions_desc')}\n`
   return markdown
 }
 
@@ -644,7 +678,7 @@ function downloadMarkdownExport() {
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
-  showToast('已开始下载')
+  showToast(t('toast_downloadStarted'))
 }
 
 function showImportPreviewModal() {
@@ -674,7 +708,7 @@ async function handleImportFile(event: Event) {
     else if (extension === 'csv') parsed = parseCSVImport(content)
     else parsed = tryAutoDetect(content)
 
-    if (parsed.length === 0) { showToast('未能识别有效数据'); return }
+    if (parsed.length === 0) { showToast(t('toast_noValidData')); return }
     importPreviewData = parsed.map(item => {
       const existing = passwords.find(p => p.title === item.title)
       return {
@@ -688,12 +722,13 @@ async function handleImportFile(event: Event) {
     })
     renderImportPreview()
   } catch (err) {
-    showToast('文件解析失败: ' + (err instanceof Error ? err.message : String(err)))
+    showToast(t('toast_parseFailed', { error: err instanceof Error ? err.message : String(err) }))
   }
 }
 
 function tryAutoDetect(content: string) {
-  if (content.includes('## ') && content.includes('**名称**')) { try { return parseMarkdownImport(content) } catch {} }
+  const titleField = t('export_field_title')
+  if (content.includes('## ') && content.includes(`**${titleField}**`)) { try { return parseMarkdownImport(content) } catch {} }
   try { return parseJSONImport(content) } catch {}
   try { return parseCSVImport(content) } catch {}
   return []
@@ -702,6 +737,16 @@ function tryAutoDetect(content: string) {
 function parseMarkdownImport(content: string) {
   const entries: Array<{ title: string; username: string; password: string; category: string; notes: string }> = []
   const sections = content.split(/##\s+/)
+  const titleField = t('export_field_title')
+  const catField = t('export_field_category')
+  const userField = t('export_field_username')
+  const passField = t('export_field_password')
+  const notesField = t('export_field_notes')
+  const emptyMarker = t('export_empty')
+  const noneMarker = t('export_none')
+  const catMap: Record<string, string> = {}
+  const allCats = getSystemCategories()
+  for (const [id, name] of Object.entries(allCats)) { catMap[name] = id }
   for (const section of sections) {
     const lines = section.trim().split('\n')
     if (lines.length < 2) continue
@@ -710,19 +755,18 @@ function parseMarkdownImport(content: string) {
     if (titleMatch) entry.title = titleMatch[1].trim()
     for (const line of lines) {
       const trimmed = line.trim()
-      const nameMatch = trimmed.match(/[-*]\s*\*\*名称\*\*[:：]?\s*(.+)/)
+      const nameMatch = trimmed.match(new RegExp(`[-*]\\s*\\*\\*${titleField}\\*\\*[:：]?\\s*(.+)`))
       if (nameMatch) entry.title = nameMatch[1].trim()
-      const catMatch = trimmed.match(/[-*]\s*\*\*分类\*\*[:：]?\s*(.+)/)
+      const catMatch = trimmed.match(new RegExp(`[-*]\\s*\\*\\*${catField}\\*\\*[:：]?\\s*(.+)`))
       if (catMatch) {
-        const catMap: Record<string, string> = { '工作': 'work', '个人': 'personal', '金融': 'finance', '社交': 'social', '其他': 'other' }
         entry.category = catMap[catMatch[1].trim()] || 'other'
       }
-      const userMatch = trimmed.match(/[-*]\s*\*\*用户\*\*[:：]?\s*(.+)/)
-      if (userMatch) entry.username = userMatch[1].trim() === '(空)' ? '' : userMatch[1].trim()
-      const passMatch = trimmed.match(/[-*]\s*\*\*密码\*\*[:：]?\s*(.+)/)
+      const userMatch = trimmed.match(new RegExp(`[-*]\\s*\\*\\*${userField}\\*\\*[:：]?\\s*(.+)`))
+      if (userMatch) entry.username = userMatch[1].trim() === emptyMarker ? '' : userMatch[1].trim()
+      const passMatch = trimmed.match(new RegExp(`[-*]\\s*\\*\\*${passField}\\*\\*[:：]?\\s*(.+)`))
       if (passMatch) entry.password = passMatch[1].trim()
-      const notesMatch = trimmed.match(/[-*]\s*\*\*备注\*\*[:：]?\s*(.+)/)
-      if (notesMatch) entry.notes = notesMatch[1].trim() === '(无)' ? '' : notesMatch[1].trim()
+      const notesMatch = trimmed.match(new RegExp(`[-*]\\s*\\*\\*${notesField}\\*\\*[:：]?\\s*(.+)`))
+      if (notesMatch) entry.notes = notesMatch[1].trim() === noneMarker ? '' : notesMatch[1].trim()
     }
     if (entry.title) entries.push(entry)
   }
@@ -780,7 +824,13 @@ function renderImportPreview() {
   const totalCount = importPreviewData.length
   const conflictCount = importPreviewData.filter(i => i.conflict).length
 
-  stats.innerHTML = `共识别 <strong>${totalCount}</strong> 条记录，有效 <strong>${importPreviewData.filter(i => i.valid).length}</strong> 条，选中 <strong>${validCount}</strong> 条待导入${conflictCount > 0 ? `，其中 <strong style="color:var(--warning)">${conflictCount}</strong> 条名称重复` : ''}`
+  const conflictText = conflictCount > 0 ? t('import_conflictSuffix', { count: String(conflictCount) }) : ''
+  stats.innerHTML = t('import_stats', {
+    total: String(totalCount),
+    valid: String(importPreviewData.filter(i => i.valid).length),
+    selected: String(validCount),
+    conflict: conflictText
+  })
 
   tbody.innerHTML = importPreviewData.map((item, idx) => {
     const conflictStyle = item.conflict ? 'style="background:rgba(212,168,75,0.1)"' : ''
@@ -788,9 +838,9 @@ function renderImportPreview() {
     const disabledAttr = !item.valid ? 'disabled' : ''
     let conflictCell = '<td>-</td>'
     if (item.conflict) {
-      conflictCell = `<td><select onchange="setConflictAction(${idx}, this.value)" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:0.8rem;"><option value="skip" ${item.conflictAction === 'skip' ? 'selected' : ''}>不导入</option><option value="overwrite" ${item.conflictAction === 'overwrite' ? 'selected' : ''}>覆盖</option><option value="import" ${item.conflictAction === 'import' ? 'selected' : ''}>导入</option></select></td>`
+      conflictCell = `<td><select onchange="setConflictAction(${idx}, this.value)" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:0.8rem;"><option value="skip" ${item.conflictAction === 'skip' ? 'selected' : ''}>${t('import_conflict_skip')}</option><option value="overwrite" ${item.conflictAction === 'overwrite' ? 'selected' : ''}>${t('import_conflict_overwrite')}</option><option value="import" ${item.conflictAction === 'import' ? 'selected' : ''}>${t('import_conflict_import')}</option></select></td>`
     }
-    return `<tr class="${rowClass}" ${conflictStyle} ${!item.valid ? 'style="opacity:0.5"' : ''}><td><input type="checkbox" ${item.selected ? 'checked' : ''} ${disabledAttr} onchange="toggleImportItem(${idx})"></td><td>${escapeHtml(item.title) || '<span style="color:var(--danger)">(必填)</span>'}${item.conflict ? ' <span style="color:var(--warning);font-size:0.75rem;">[重复]</span>' : ''}</td><td>${escapeHtml(item.username) || '-'}</td><td>${getCategoryName(item.category)}</td><td>${escapeHtml(item.notes?.substring(0, 30) || '')}${item.notes && item.notes.length > 30 ? '...' : ''}</td>${conflictCell}</tr>`
+    return `<tr class="${rowClass}" ${conflictStyle} ${!item.valid ? 'style="opacity:0.5"' : ''}><td><input type="checkbox" ${item.selected ? 'checked' : ''} ${disabledAttr} onchange="toggleImportItem(${idx})"></td><td>${escapeHtml(item.title) || `<span style="color:var(--danger)">${t('import_required')}</span>`}${item.conflict ? ` <span style="color:var(--warning);font-size:0.75rem;">${t('import_duplicate')}</span>` : ''}</td><td>${escapeHtml(item.username) || '-'}</td><td>${getCategoryName(item.category)}</td><td>${escapeHtml(item.notes?.substring(0, 30) || '')}${item.notes && item.notes.length > 30 ? '...' : ''}</td>${conflictCell}</tr>`
   }).join('')
 
   ;(document.getElementById('confirmImportBtn') as HTMLButtonElement).disabled = validCount === 0
@@ -837,7 +887,7 @@ async function confirmImport() {
   await saveToStorage()
   closeImportPreviewModal()
   renderPasswords()
-  showToast(`成功导入 ${items.length} 条记录`)
+  showToast(t('toast_importSuccess', { count: String(items.length) }))
 }
 
 // ===== Reset =====
@@ -898,14 +948,14 @@ async function checkResetVerify() {
 
   if (securityQuestion) {
     const answer = (document.getElementById('resetVerifyAnswer') as HTMLInputElement).value.trim()
-    if (!answer) { errorEl.textContent = '请输入安全验证答案'; return }
+    if (!answer) { errorEl.textContent = t('error_answerRequired'); return }
     const encoder = new TextEncoder()
     const answerHash = await crypto.subtle.digest('SHA-256', encoder.encode(answer.toLowerCase()))
     const answerHex = Array.from(new Uint8Array(answerHash)).map(b => b.toString(16).padStart(2, '0')).join('')
-    if (answerHex !== securityAnswer) { errorEl.textContent = '安全验证答案错误'; return }
+    if (answerHex !== securityAnswer) { errorEl.textContent = t('error_wrongAnswer'); return }
   } else {
     const text = (document.getElementById('resetVerifyText') as HTMLInputElement).value.trim()
-    if (text !== 'DELETE ALL DATA') { errorEl.textContent = '确认文本不正确'; return }
+    if (text !== 'DELETE ALL DATA') { errorEl.textContent = t('error_confirmTextIncorrect'); return }
   }
 
   closeResetVerifyModal()
@@ -915,16 +965,16 @@ async function checkResetVerify() {
   resetCountdownValue = 5
   const finalBtn = document.getElementById('finalResetBtn') as HTMLButtonElement
   finalBtn.disabled = true
-  finalBtn.textContent = `确认重置系统 (${resetCountdownValue})`
+  finalBtn.textContent = t('resetFinal_button_countdown', { count: String(resetCountdownValue) })
 
   if (resetCountdownTimer) clearInterval(resetCountdownTimer)
   resetCountdownTimer = setInterval(() => {
     resetCountdownValue--
     if (resetCountdownValue > 0) {
-      finalBtn.textContent = `确认重置系统 (${resetCountdownValue})`
+      finalBtn.textContent = t('resetFinal_button_countdown', { count: String(resetCountdownValue) })
     } else {
       finalBtn.disabled = false
-      finalBtn.textContent = '确认重置系统'
+      finalBtn.textContent = t('resetFinal_button_confirm')
       if (resetCountdownTimer) { clearInterval(resetCountdownTimer); resetCountdownTimer = null }
     }
   }, 1000)
@@ -955,7 +1005,7 @@ async function confirmReset() {
   ;(document.getElementById('confirmPassword') as HTMLInputElement).value = ''
   ;(document.getElementById('unlockPassword') as HTMLInputElement).value = ''
   ;(document.getElementById('loginError') as HTMLParagraphElement).textContent = ''
-  showToast('系统已重置，请创建新主密码')
+  showToast(t('toast_dataReset'))
 }
 
 // ===== Theme =====
@@ -977,6 +1027,10 @@ async function setTheme(theme: string, save = true) {
 
 function toggleThemeDropdown() {
   document.getElementById('themeDropdown')?.classList.toggle('active')
+}
+
+function toggleLanguageDropdown() {
+  document.getElementById('langDropdown')?.classList.toggle('active')
 }
 
 function updateThemeDropdown() {
@@ -1019,7 +1073,7 @@ function updateTimerDisplay() {
 // ===== Utilities =====
 async function copyText(text: string) {
   await navigator.clipboard.writeText(text)
-  showToast('已复制')
+  showToast(t('toast_copied'))
 }
 
 function showToast(msg: string) {
@@ -1040,9 +1094,9 @@ function escapeJs(str: string): string {
 }
 
 function renderLogInfo(entry: PasswordEntry): string {
-  const created = entry.createdAt ? formatDateTime(entry.createdAt) : '未知'
-  const updated = entry.updatedAt && entry.updatedAt !== entry.createdAt ? ` · 修改于 ${formatDateTime(entry.updatedAt)}` : ''
-  return `<div class="log-info">创建于 ${created}${updated}</div>`
+  const created = entry.createdAt ? formatDateTime(entry.createdAt) : t('date_unknown')
+  const updated = entry.updatedAt && entry.updatedAt !== entry.createdAt ? ` · ${t('log_updated')} ${formatDateTime(entry.updatedAt)}` : ''
+  return `<div class="log-info">${t('log_created')} ${created}${updated}</div>`
 }
 
 function formatDateTime(timestamp: number): string {
@@ -1056,8 +1110,8 @@ async function copyEntry(id: string) {
   const newEntry: PasswordEntry = {
     ...entry,
     id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-    title: entry.title + ' (复制)',
-    notes: entry.notes ? entry.notes + ' (从原条目复制)' : '从原条目复制',
+    title: entry.title + ' ' + t('misc_copySuffix'),
+    notes: entry.notes ? entry.notes + ' ' + t('misc_copiedFrom') : t('misc_copiedFrom'),
     showPassword: false,
     createdAt: Date.now(),
     updatedAt: Date.now()
@@ -1065,7 +1119,7 @@ async function copyEntry(id: string) {
   passwords.push(newEntry)
   await saveToStorage()
   renderPasswords()
-  showToast('已复制条目')
+  showToast(t('toast_copiedEntry'))
 }
 
 // ===== Settings =====
@@ -1084,13 +1138,13 @@ function closeSettingsModal() {
 async function verifySettingsPassword() {
   const password = (document.getElementById('settingsVerifyPassword') as HTMLInputElement).value
   const errorEl = document.getElementById('settingsVerifyError') as HTMLParagraphElement
-  if (!password) { errorEl.textContent = '请输入主密码'; return }
+  if (!password) { errorEl.textContent = t('error_passwordRequired'); return }
 
   const hashStr = await window.electronAPI.vault.get('passwordHash')
-  if (!hashStr) { errorEl.textContent = '无法获取密码哈希'; return }
+  if (!hashStr) { errorEl.textContent = t('error_hashUnavailable'); return }
 
   const valid = await window.electronAPI.crypto.verifyPassword(password, hashStr)
-  if (!valid) { errorEl.textContent = '主密码错误'; return }
+  if (!valid) { errorEl.textContent = t('error_wrongMasterPassword'); return }
 
   // Show settings content
   ;(document.getElementById('settingsVerifySection') as HTMLDivElement).style.display = 'none'
@@ -1141,10 +1195,10 @@ async function changeMasterPassword() {
   const errorEl = document.getElementById('settingsPasswordError') as HTMLParagraphElement
   errorEl.textContent = ''
 
-  if (!currentPwd) { errorEl.textContent = '请输入当前主密码'; return }
-  if (newPwd.length < 8) { errorEl.textContent = '新主密码至少需要8位'; return }
-  if (newPwd !== confirmPwd) { errorEl.textContent = '两次输入的新密码不一致'; return }
-  if (newPwd === currentPwd) { errorEl.textContent = '新密码不能与当前密码相同'; return }
+  if (!currentPwd) { errorEl.textContent = t('error_currentPasswordRequired'); return }
+  if (newPwd.length < 8) { errorEl.textContent = t('error_newPasswordTooShort'); return }
+  if (newPwd !== confirmPwd) { errorEl.textContent = t('error_newPasswordMismatch'); return }
+  if (newPwd === currentPwd) { errorEl.textContent = t('error_samePassword'); return }
 
   const result = await window.electronAPI.vault.changePassword(currentPwd, newPwd)
   if (result.success) {
@@ -1153,9 +1207,9 @@ async function changeMasterPassword() {
     ;(document.getElementById('settingsNewPassword') as HTMLInputElement).value = ''
     ;(document.getElementById('settingsConfirmPassword') as HTMLInputElement).value = ''
     ;(document.getElementById('settingsStrengthFill') as HTMLDivElement).className = 'strength-fill'
-    showToast('主密码修改成功')
+    showToast(t('toast_passwordChanged'))
   } else {
-    errorEl.textContent = result.error || '修改失败'
+    errorEl.textContent = result.error || t('error_changeFailed')
   }
 }
 
@@ -1166,9 +1220,9 @@ async function changeSecurityQuestion() {
   const errorEl = document.getElementById('settingsQuestionError') as HTMLParagraphElement
   errorEl.textContent = ''
 
-  if (!newQuestion) { errorEl.textContent = '请输入新验证问题'; return }
-  if (!newAnswer) { errorEl.textContent = '请输入答案'; return }
-  if (newAnswer !== confirmAnswer) { errorEl.textContent = '两次输入的答案不一致'; return }
+  if (!newQuestion) { errorEl.textContent = t('error_questionRequired'); return }
+  if (!newAnswer) { errorEl.textContent = t('error_answerEmpty'); return }
+  if (newAnswer !== confirmAnswer) { errorEl.textContent = t('error_answerMismatch'); return }
 
   const encoder = new TextEncoder()
   const answerHash = await crypto.subtle.digest('SHA-256', encoder.encode(newAnswer.toLowerCase()))
@@ -1188,7 +1242,7 @@ async function changeSecurityQuestion() {
   ;(document.getElementById('settingsNewQuestion') as HTMLInputElement).value = ''
   ;(document.getElementById('settingsNewAnswer') as HTMLInputElement).value = ''
   ;(document.getElementById('settingsConfirmAnswer') as HTMLInputElement).value = ''
-  showToast('安全验证问题已修改')
+  showToast(t('toast_questionChanged'))
 }
 
 // ===== Recovery Key & Forgot Password =====
@@ -1200,16 +1254,16 @@ async function loadRecoveryKeyStatus() {
   const statusText = document.getElementById('recoveryKeyStatusText') as HTMLSpanElement
   const displayBox = document.getElementById('recoveryKeyDisplayBox') as HTMLDivElement
   if (hash) {
-    statusText.textContent = '已设置恢复密钥'
+    statusText.textContent = t('recoveryKeyStatus_set')
     displayBox.style.display = 'none'
   } else {
-    statusText.textContent = '未设置恢复密钥'
+    statusText.textContent = t('recoveryKeyStatus_unset')
     displayBox.style.display = 'none'
   }
 }
 
 async function generateRecoveryKeyFromSettings() {
-  if (!currentPassword) { showToast('请先登录'); return }
+  if (!currentPassword) { showToast(t('toast_enterAppFailed')); return }
   const result = await window.electronAPI.recovery.generate(currentPassword)
   if (result.success && result.words) {
     const display = document.getElementById('settingsRecoveryKeyDisplay') as HTMLParagraphElement
@@ -1217,10 +1271,10 @@ async function generateRecoveryKeyFromSettings() {
     display.textContent = result.words
     displayBox.style.display = 'block'
     const statusText = document.getElementById('recoveryKeyStatusText') as HTMLSpanElement
-    statusText.textContent = '已设置恢复密钥'
-    showToast('恢复密钥已生成，请妥善保存')
+    statusText.textContent = t('recoveryKeyStatus_set')
+    showToast(t('toast_recoveryKeyGenerated'))
   } else {
-    showToast(result.error || '生成失败')
+    showToast(result.error || t('error_generateFailed'))
   }
 }
 
@@ -1229,7 +1283,7 @@ async function copySettingsRecoveryKey() {
   const words = display.textContent || ''
   if (!words) return
   await navigator.clipboard.writeText(words)
-  showToast('已复制恢复密钥')
+  showToast(t('toast_recoveryKeyCopied'))
 }
 
 function showForgotPasswordModal() {
@@ -1281,9 +1335,9 @@ function closeRecoveryKeyModal() {
 async function verifyRecoveryKey() {
   const words = (document.getElementById('recoveryKeyInput') as HTMLTextAreaElement).value.trim()
   const errorEl = document.getElementById('recoveryKeyError') as HTMLParagraphElement
-  if (!words) { if (errorEl) errorEl.textContent = '请输入恢复密钥'; return }
+  if (!words) { if (errorEl) errorEl.textContent = t('error_recoveryKeyEmpty'); return }
   const valid = await window.electronAPI.recovery.verify(words)
-  if (!valid) { if (errorEl) errorEl.textContent = '恢复密钥不正确'; return }
+  if (!valid) { if (errorEl) errorEl.textContent = t('error_recoveryKeyInvalid'); return }
   verifiedRecoveryKey = words
   if (errorEl) errorEl.textContent = ''
   ;(document.getElementById('recoveryKeyStep1') as HTMLDivElement).style.display = 'none'
@@ -1311,9 +1365,9 @@ async function changePasswordWithRecoveryKey() {
   const confirmPwd = (document.getElementById('recoveryConfirmPassword') as HTMLInputElement).value
   const errorEl = document.getElementById('recoveryNewPasswordError') as HTMLParagraphElement
   errorEl.textContent = ''
-  if (newPwd.length < 8) { errorEl.textContent = '新密码至少需要8位'; return }
-  if (newPwd !== confirmPwd) { errorEl.textContent = '两次输入的密码不一致'; return }
-  if (!verifiedRecoveryKey) { errorEl.textContent = '恢复密钥验证已过期，请重新开始'; return }
+  if (newPwd.length < 8) { errorEl.textContent = t('error_newPasswordTooShort'); return }
+  if (newPwd !== confirmPwd) { errorEl.textContent = t('error_passwordMismatch'); return }
+  if (!verifiedRecoveryKey) { errorEl.textContent = t('error_recoveryExpired'); return }
 
   const result = await window.electronAPI.recovery.changePassword(verifiedRecoveryKey, newPwd)
   if (result.success && result.newWords) {
@@ -1322,16 +1376,16 @@ async function changePasswordWithRecoveryKey() {
     ;(document.getElementById('newRecoveryKeyDisplay') as HTMLParagraphElement).textContent = result.newWords
     ;(document.getElementById('recoveryKeyStep2') as HTMLDivElement).style.display = 'none'
     ;(document.getElementById('recoveryKeyStep3') as HTMLDivElement).style.display = 'block'
-    showToast('密码重置成功，请保存新的恢复密钥')
+    showToast(t('toast_passwordResetSuccess'))
   } else {
-    errorEl.textContent = result.error || '重置失败'
+    errorEl.textContent = result.error || t('error_resetFailed')
   }
 }
 
 async function copyNewRecoveryKey() {
   if (!newRecoveryKeyWords) return
   await navigator.clipboard.writeText(newRecoveryKeyWords)
-  showToast('已复制新的恢复密钥')
+  showToast(t('toast_newRecoveryKeyCopied'))
 }
 
 async function finishRecoveryKeyReset() {
@@ -1348,7 +1402,7 @@ async function finishRecoveryKeyReset() {
       return
     }
   }
-  showToast('进入应用失败，请重新解锁')
+  showToast(t('toast_enterAppFailed'))
   lock()
 }
 
@@ -1368,7 +1422,7 @@ async function confirmHardReset() {
   const errorEl = document.getElementById('hardResetError') as HTMLParagraphElement
   errorEl.textContent = ''
   const text = (document.getElementById('hardResetText') as HTMLInputElement).value.trim()
-  if (text !== 'DELETE ALL DATA') { errorEl.textContent = '确认文本不正确'; return }
+  if (text !== 'DELETE ALL DATA') { errorEl.textContent = t('error_confirmTextIncorrect'); return }
 
   const result = await window.electronAPI.vault.reset()
   if (result.success) {
@@ -1386,9 +1440,9 @@ async function confirmHardReset() {
     ;(document.getElementById('confirmPassword') as HTMLInputElement).value = ''
     ;(document.getElementById('unlockPassword') as HTMLInputElement).value = ''
     ;(document.getElementById('loginError') as HTMLParagraphElement).textContent = ''
-    showToast('所有数据已清空，请重新初始化')
+    showToast(t('toast_dataCleared'))
   } else {
-    errorEl.textContent = '清空失败，请重试'
+    errorEl.textContent = t('error_clearFailed')
   }
 }
 
@@ -1397,7 +1451,7 @@ document.addEventListener('contextmenu', function (e) {
   const card = (e.target as HTMLElement).closest('.password-card')
   if (card && (document.getElementById('appContainer') as HTMLDivElement).style.display === 'block') {
     e.preventDefault()
-    if (!batchMode) { batchMode = true; renderPasswords(); showToast('已开启批量选择模式') }
+    if (!batchMode) { batchMode = true; renderPasswords(); showToast(t('toast_batchModeOn')) }
   }
 })
 
@@ -1408,7 +1462,7 @@ init()
 Object.assign(window, {
   login,
   showResetModal, closeResetModal, closeResetVerifyModal, confirmReset, checkResetText, checkResetAnswer, checkResetVerify,
-  toggleThemeDropdown, setTheme,
+  toggleThemeDropdown, toggleLanguageDropdown, setTheme,
   showAddModal, editEntry, saveEntry, deleteEntry, closeModal,
   copyEntry, copyText, togglePassword,
   filterCategory, renderPasswords,
@@ -1428,5 +1482,6 @@ Object.assign(window, {
   showRecoveryKeyRecoverModal, closeRecoveryKeyModal, verifyRecoveryKey,
   checkRecoveryPasswordStrength, changePasswordWithRecoveryKey, copyNewRecoveryKey, finishRecoveryKeyReset,
   closeHardResetModal, checkHardResetText, confirmHardReset,
-  generateRecoveryKeyFromSettings, copySettingsRecoveryKey
+  generateRecoveryKeyFromSettings, copySettingsRecoveryKey,
+  switchLanguage
 })

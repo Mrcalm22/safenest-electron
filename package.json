@@ -33,6 +33,9 @@
       "out/**/*",
       "assets/**/*"
     ],
+    "asarUnpack": [
+      "node_modules/@node-rs/argon2/**/*"
+    ],
     "mac": {
       "identity": null,
       "category": "public.app-category.utilities",
