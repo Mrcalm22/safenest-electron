@@ -37,28 +37,42 @@
       "node_modules/@node-rs/argon2/**/*"
     ],
     "mac": {
+      "icon": "assets/icon.icns",
       "identity": null,
       "category": "public.app-category.utilities",
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         }
       ]
     },
     "win": {
+      "icon": "assets/icon.ico",
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "ia32"]
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64", "ia32"]
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         }
       ]
     },
@@ -81,7 +95,9 @@
     "electron-builder": "^26.8.1",
     "electron-vite": "^3.0.0",
     "eslint": "^9.0.0",
+    "png-to-ico": "^3.0.1",
     "prettier": "^3.0.0",
+    "sharp": "^0.34.5",
     "typescript": "^5.7.0",
     "vite": "^6.0.0",
     "vitest": "^3.0.0"

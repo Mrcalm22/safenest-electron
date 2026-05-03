@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d9488" />
+      <stop offset="100%" stop-color="#1e3a8a" />
+    </linearGradient>
+
+    <!-- Shield shine -->
+    <linearGradient id="shield" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.05" />
+    </linearGradient>
+
+    <!-- Drop shadow -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="24" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Rounded background -->
+  <rect x="64" y="64" width="896" height="896" rx="192" fill="url(#bg)" filter="url(#shadow)" />
+
+  <!-- Shield shape -->
+  <path d="M512 220
+           C512 220 760 300 760 420
+           C760 580 660 740 512 820
+           C364 740 264 580 264 420
+           C264 300 512 220 512 220Z"
+        fill="url(#shield)" stroke="#ffffff" stroke-width="24" stroke-linejoin="round" />
+
+  <!-- Lock body -->
+  <rect x="400" y="480" width="224" height="180" rx="28" fill="#ffffff" />
+
+  <!-- Lock shackle -->
+  <path d="M436 480
+           L436 400
+           A76 76 0 0 1 588 400
+           L588 480"
+        fill="none" stroke="#ffffff" stroke-width="40" stroke-linecap="round" />
+
+  <!-- Keyhole -->
+  <circle cx="512" cy="560" r="28" fill="#1e3a8a" />
+  <path d="M512 560 L512 624" stroke="#1e3a8a" stroke-width="28" stroke-linecap="round" />
+</svg>
