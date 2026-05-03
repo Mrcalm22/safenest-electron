@@ -1,3 +1,6 @@
+
+> [English Version](README_EN.md)
+
 # SafeNest
 
 一款基于 **Electron + TypeScript + Vite** 构建的安全、本地优先的密码管理器。
@@ -82,5 +85,3 @@ npx tsc --noEmit
 MIT
 
 ---
-
-> [English Version](README_EN.md)
