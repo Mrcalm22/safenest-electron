@@ -18,7 +18,7 @@
         }
 
         /* Blue Theme */
-        [data-theme="blue"] {
+        :root[data-theme="blue"] {
             --bg-primary: #f0f5ff;
             --bg-secondary: #e0ebff;
             --bg-card: #ffffff;
@@ -33,7 +33,7 @@
         }
 
         /* Purple Theme */
-        [data-theme="purple"] {
+        :root[data-theme="purple"] {
             --bg-primary: #f8f5ff;
             --bg-secondary: #efe8ff;
             --bg-card: #ffffff;
@@ -48,7 +48,7 @@
         }
 
         /* Orange Theme */
-        [data-theme="orange"] {
+        :root[data-theme="orange"] {
             --bg-primary: #fff8f0;
             --bg-secondary: #ffefe0;
             --bg-card: #ffffff;
@@ -63,7 +63,7 @@
         }
 
         /* Dark Theme */
-        [data-theme="dark"] {
+        :root[data-theme="dark"] {
             --bg-primary: #1a1d21;
             --bg-secondary: #252a30;
             --bg-card: #2d333b;
@@ -81,7 +81,7 @@
         }
 
         /* Midnight Theme */
-        [data-theme="midnight"] {
+        :root[data-theme="midnight"] {
             --bg-primary: #0d1117;
             --bg-secondary: #161b22;
             --bg-card: #21262d;
@@ -422,13 +422,13 @@
             transition: all 0.2s;
         }
         .lang-btn:hover {
-            border-color: var(--primary);
-            color: var(--primary);
+            border-color: var(--accent);
+            color: var(--accent);
         }
         .lang-btn.active {
-            background: var(--primary);
+            background: var(--accent);
             color: white;
-            border-color: var(--primary);
+            border-color: var(--accent);
         }
 
         .lang-switcher {
