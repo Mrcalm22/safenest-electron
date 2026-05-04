@@ -18,6 +18,7 @@ async function switchLanguage(lang: string): Promise<void> {
   await setLang(lang as Language)
   translateDOM()
   translateAttrs()
+  updateLangButtons()
   // Re-render dynamic content
   renderPasswords()
   renderFilterTags()
