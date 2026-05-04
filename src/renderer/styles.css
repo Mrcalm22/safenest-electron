@@ -923,6 +923,7 @@
             font-family: inherit;
             font-size: 0.95rem;
             background: var(--bg-primary);
+            color: var(--text-primary);
             transition: all 0.2s ease;
         }
 
