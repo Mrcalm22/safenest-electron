@@ -28,6 +28,30 @@
 
 SafeNest 遵循 Electron 安全最佳实践：`contextIsolation: true`、`sandbox: true`、`nodeIntegration: false`。所有加密操作均在 **主进程**（Node.js）中运行，与渲染进程隔离。渲染进程仅通过类型安全的 `contextBridge` API 进行通信。
 
+### 渲染进程模块结构
+
+重构后，渲染进程代码按职责拆分为 12 个独立模块：
+
+```
+src/renderer/
+  main.ts              # 入口：初始化 + 事件绑定 + window 暴露
+  modules/
+    store.ts           # 中央状态（替代 18 个全局变量）
+    ui.ts              # Toast、Clipboard、EscapeHtml、日期格式化
+    vault.ts           # 密码加密持久化
+    categories.ts      # 系统分类 + 自定义分类 CRUD
+    render.ts          # 所有 DOM 渲染（renderPasswords、renderFilterTags 等）
+    auth.ts            # 登录/解锁/主密码验证/安全问答
+    entries.ts         # 添加/编辑/删除密码条目（Modal 逻辑）
+    batch.ts           # 批量选择、批量删除/导出
+    importExport.ts    # 导入预览、Markdown/JSON/CSV 导出
+    recovery.ts        # 忘记密码、恢复密钥、硬重置
+    settings.ts        # 主题切换、语言设置、修改主密码
+    lockTimer.ts       # 自动锁定倒计时
+```
+
+**依赖规则**：`store.ts` 无依赖，被所有人引用；业务模块间通过 `import` 组合，无循环依赖。
+
 ![架构图](docs/safenest-arch.png)
 
 ---
