@@ -24,6 +24,48 @@ All your passwords are encrypted with **AES-256-GCM** and stored locally in an *
 - **Virtual scrolling**: auto-enabled in list view when >50 items, preventing DOM overload
 - **Debounced search**: 200ms delay before filtering, reducing redundant renders
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/login.png" alt="Login Screen" width="720">
+  <br><em>Login / Unlock — supports initial setup and master password unlock</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/grid-view.png" alt="Grid View" width="720">
+  <br><em>Grid View — card layout with category tags at a glance</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/list-view.png" alt="List View" width="720">
+  <br><em>List View — compact layout with virtual scrolling (auto-enabled above 50 items)</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/add-entry.png" alt="Add Entry" width="720">
+  <br><em>Add / Edit Entry — built-in password generator with strength checker</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/filter-category.png" alt="Category Filter" width="720">
+  <br><em>Category Filter — quickly filter by Work, Personal, Finance, etc.</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/batch-mode.png" alt="Batch Mode" width="720">
+  <br><em>Batch Mode — multi-select entries for bulk export or delete</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/dark-theme.png" alt="Dark Theme" width="720">
+  <br><em>Dark Theme — 6 themes to choose from</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/settings.png" alt="Settings" width="720">
+  <br><em>Settings — change master password, security question, generate recovery key</em>
+</p>
+
 ---
 
 ## Architecture

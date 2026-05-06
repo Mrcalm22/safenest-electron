@@ -24,6 +24,48 @@
 - **虚拟滚动**：列表视图超过 50 条时自动启用，避免 DOM 过载
 - **防抖搜索**：输入后 200ms 触发过滤，减少重复渲染
 
+## 应用截图
+
+<p align="center">
+  <img src="docs/screenshots/login.png" alt="登录界面" width="720">
+  <br><em>登录/解锁界面 — 支持初次设置和主密码解锁</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/grid-view.png" alt="网格视图" width="720">
+  <br><em>网格视图 — 卡片式布局，分类标签一目了然</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/list-view.png" alt="列表视图" width="720">
+  <br><em>列表视图 — 紧凑排版，支持虚拟滚动（超过 50 条自动启用）</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/add-entry.png" alt="添加密码" width="720">
+  <br><em>添加/编辑条目 — 内置密码生成器和强度检测</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/filter-category.png" alt="分类过滤" width="720">
+  <br><em>分类过滤 — 快速筛选工作、个人、金融等分类</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/batch-mode.png" alt="批量操作" width="720">
+  <br><em>批量模式 — 多选后批量导出或删除</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/dark-theme.png" alt="深色主题" width="720">
+  <br><em>深色主题 — 6 种主题自由切换</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/settings.png" alt="设置" width="720">
+  <br><em>设置面板 — 修改主密码、安全问题、生成恢复密钥</em>
+</p>
+
 ---
 
 ## 技术架构
