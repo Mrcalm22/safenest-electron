@@ -5,6 +5,11 @@ import { getAllCategories, getCategoryName } from './categories'
 import { saveToStorage } from './vault'
 import type { PasswordEntry } from '../../types'
 
+const LIST_ITEM_HEIGHT = 64
+const LIST_HEADER_HEIGHT = 40
+const VIRTUAL_BUFFER = 5
+const VIRTUAL_THRESHOLD = 50
+
 export function renderPasswords(): void {
   const grid = document.getElementById('passwordGrid') as HTMLDivElement
   const search = (document.getElementById('searchInput') as HTMLInputElement).value.toLowerCase()
@@ -26,11 +31,46 @@ export function renderPasswords(): void {
 
   if (store.viewMode === 'list') {
     grid.className = 'password-list'
-    grid.innerHTML = renderListView(filtered)
+    if (filtered.length > VIRTUAL_THRESHOLD) {
+      renderVirtualList(grid, filtered)
+    } else {
+      grid.innerHTML = renderListView(filtered)
+    }
   } else {
     grid.className = 'password-grid'
     grid.innerHTML = renderGridView(filtered)
   }
+}
+
+function renderVirtualList(grid: HTMLDivElement, filtered: PasswordEntry[]): void {
+  const totalHeight = LIST_HEADER_HEIGHT + filtered.length * LIST_ITEM_HEIGHT
+  const scrollTop = grid.scrollTop
+  const containerHeight = grid.clientHeight
+
+  let startIndex = Math.floor((scrollTop - LIST_HEADER_HEIGHT) / LIST_ITEM_HEIGHT)
+  startIndex = Math.max(0, startIndex - VIRTUAL_BUFFER)
+
+  let endIndex = Math.ceil((scrollTop + containerHeight - LIST_HEADER_HEIGHT) / LIST_ITEM_HEIGHT)
+  endIndex = Math.min(filtered.length, endIndex + VIRTUAL_BUFFER)
+
+  const visibleItems = filtered.slice(startIndex, endIndex)
+  const topSpacer = startIndex * LIST_ITEM_HEIGHT
+  const bottomSpacer = (filtered.length - endIndex) * LIST_ITEM_HEIGHT
+
+  const itemsHtml = visibleItems.map((p, i) => renderListItem(p, true, i === visibleItems.length - 1)).join('')
+
+  grid.innerHTML = `<div style="min-height:${totalHeight}px;">
+    <div class="list-header">
+      <span class="list-col list-col-title">${t('list_header_website')}</span>
+      <span class="list-col list-col-category">${t('list_header_category')}</span>
+      <span class="list-col list-col-username">${t('list_header_username')}</span>
+      <span class="list-col list-col-password">${t('list_header_password')}</span>
+      <span class="list-col list-col-actions">${t('list_header_actions')}</span>
+    </div>
+    <div style="height:${topSpacer}px;"></div>
+    ${itemsHtml}
+    <div style="height:${bottomSpacer}px;"></div>
+  </div>`
 }
 
 export function renderGridView(filtered: PasswordEntry[]): string {
@@ -74,35 +114,34 @@ export function renderGridView(filtered: PasswordEntry[]): string {
   }).join('')
 }
 
+function renderListItem(p: PasswordEntry, addGap = false, isLast = false): string {
+  const isSelected = store.selectedItems.has(p.id)
+  const clickHandler = store.batchMode ? `toggleSelectItem('${p.id}')` : `togglePassword('${p.id}')`
+  const checkbox = store.batchMode ? `<input type="checkbox" class="list-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleSelectItem('${p.id}')">` : ''
+  const deleteBtn = !store.batchMode ? `<button class="copy-btn danger" onclick="event.stopPropagation(); deleteEntry('${p.id}')">${t('card_delete')}</button>` : ''
+  const style = (addGap && !isLast) ? ' style="margin-bottom:8px;"' : ''
+  return `<div class="password-list-item ${isSelected ? 'selected' : ''}" onclick="${clickHandler}"${style}>
+    ${checkbox}
+    <span class="list-col list-col-title">${escapeHtml(p.title)}</span>
+    <span class="list-col list-col-category"><span class="card-category">${getCategoryName(p.category)}</span></span>
+    <span class="list-col list-col-username">${escapeHtml(p.username) || '-'}</span>
+    <span class="list-col list-col-password"><span class="field-text ${p.showPassword ? '' : 'field-masked'}" id="pwd-${p.id}">${p.showPassword ? escapeHtml(p.password) : '••••••••'}</span></span>
+    <span class="list-col list-col-actions">
+      <button class="copy-btn" onclick="event.stopPropagation(); copyText('${escapeJs(p.password)}')">${t('card_copyPassword')}</button>
+      <button class="copy-btn" onclick="event.stopPropagation(); editEntry('${p.id}')">${t('card_edit')}</button>
+      ${deleteBtn}
+    </span>
+  </div>`
+}
+
 export function renderListView(filtered: PasswordEntry[]): string {
-  let html = `<div class="list-header">
+  return `<div class="list-header">
     <span class="list-col list-col-title">${t('list_header_website')}</span>
     <span class="list-col list-col-category">${t('list_header_category')}</span>
     <span class="list-col list-col-username">${t('list_header_username')}</span>
     <span class="list-col list-col-password">${t('list_header_password')}</span>
     <span class="list-col list-col-actions">${t('list_header_actions')}</span>
-  </div>`
-
-  html += filtered.map(p => {
-    const isSelected = store.selectedItems.has(p.id)
-    const clickHandler = store.batchMode ? `toggleSelectItem('${p.id}')` : `togglePassword('${p.id}')`
-    const checkbox = store.batchMode ? `<input type="checkbox" class="list-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleSelectItem('${p.id}')">` : ''
-    const deleteBtn = !store.batchMode ? `<button class="copy-btn danger" onclick="event.stopPropagation(); deleteEntry('${p.id}')">${t('card_delete')}</button>` : ''
-    return `<div class="password-list-item ${isSelected ? 'selected' : ''}" onclick="${clickHandler}">
-      ${checkbox}
-      <span class="list-col list-col-title">${escapeHtml(p.title)}</span>
-      <span class="list-col list-col-category"><span class="card-category">${getCategoryName(p.category)}</span></span>
-      <span class="list-col list-col-username">${escapeHtml(p.username) || '-'}</span>
-      <span class="list-col list-col-password"><span class="field-text ${p.showPassword ? '' : 'field-masked'}" id="pwd-${p.id}">${p.showPassword ? escapeHtml(p.password) : '••••••••'}</span></span>
-      <span class="list-col list-col-actions">
-        <button class="copy-btn" onclick="event.stopPropagation(); copyText('${escapeJs(p.password)}')">${t('card_copyPassword')}</button>
-        <button class="copy-btn" onclick="event.stopPropagation(); editEntry('${p.id}')">${t('card_edit')}</button>
-        ${deleteBtn}
-      </span>
-    </div>`
-  }).join('')
-
-  return html
+  </div>` + filtered.map((p, i, arr) => renderListItem(p, false, i === arr.length - 1)).join('')
 }
 
 export function renderFilterTags(): void {

@@ -21,6 +21,8 @@ All your passwords are encrypted with **AES-256-GCM** and stored locally in an *
 - **Theme** system
 - **Import / export** (Markdown, JSON, CSV)
 - **5-minute auto-lock** timer
+- **Virtual scrolling**: auto-enabled in list view when >50 items, preventing DOM overload
+- **Debounced search**: 200ms delay before filtering, reducing redundant renders
 
 ---
 

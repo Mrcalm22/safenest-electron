@@ -19,7 +19,8 @@ export const store = {
   resetCountdownTimer: null as ReturnType<typeof setInterval> | null,
   resetCountdownValue: 5,
   verifiedRecoveryKey: '',
-  newRecoveryKeyWords: ''
+  newRecoveryKeyWords: '',
+  listScrollTop: 0
 }
 
 export function resetStore(): void {
@@ -42,4 +43,5 @@ export function resetStore(): void {
   store.resetCountdownValue = 5
   store.verifiedRecoveryKey = ''
   store.newRecoveryKeyWords = ''
+  store.listScrollTop = 0
 }

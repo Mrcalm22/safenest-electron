@@ -1,6 +1,6 @@
 import { store } from './store'
 import { t, getLang } from '../i18n'
-import { showToast, escapeHtml, formatDateTime } from './ui'
+import { showToast, formatDateTime } from './ui'
 import { saveToStorage } from './vault'
 import { renderPasswords, renderImportPreview } from './render'
 import { getCategoryName, getSystemCategories } from './categories'

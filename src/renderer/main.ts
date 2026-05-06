@@ -54,6 +54,21 @@ if (searchInput) {
   })
 }
 
+// Virtual scroll listener for list view
+const passwordGrid = document.getElementById('passwordGrid') as HTMLDivElement | null
+let scrollDebounceTimer: ReturnType<typeof setTimeout> | null = null
+if (passwordGrid) {
+  passwordGrid.addEventListener('scroll', () => {
+    if (scrollDebounceTimer) clearTimeout(scrollDebounceTimer)
+    scrollDebounceTimer = setTimeout(() => {
+      if (store.viewMode === 'list' && store.passwords.length > 50) {
+        store.listScrollTop = passwordGrid.scrollTop
+        render.renderPasswords()
+      }
+    }, 50)
+  })
+}
+
 // Expose functions for HTML onclick handlers
 Object.assign(window, {
   login: auth.login,

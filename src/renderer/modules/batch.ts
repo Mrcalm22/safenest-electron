@@ -2,7 +2,7 @@ import { store } from './store'
 import { t } from '../i18n'
 import { showToast } from './ui'
 import { saveToStorage } from './vault'
-import { renderPasswords } from './render'
+import { renderPasswords, updateBatchToolbar } from './render'
 
 export function toggleBatchMode(): void {
   store.batchMode = !store.batchMode
