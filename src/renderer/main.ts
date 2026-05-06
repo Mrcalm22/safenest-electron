@@ -44,6 +44,16 @@ document.addEventListener('contextmenu', function (e) {
 
 init()
 
+// Debounced search input
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+const searchInput = document.getElementById('searchInput') as HTMLInputElement | null
+if (searchInput) {
+  searchInput.addEventListener('input', () => {
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = setTimeout(() => render.renderPasswords(), 200)
+  })
+}
+
 // Expose functions for HTML onclick handlers
 Object.assign(window, {
   login: auth.login,

@@ -204,7 +204,13 @@ export function renderImportPreview(): void {
 
 export function togglePassword(id: string): void {
   const entry = store.passwords.find(p => p.id === id)
-  if (entry) { entry.showPassword = !entry.showPassword; renderPasswords() }
+  if (!entry) return
+  entry.showPassword = !entry.showPassword
+  const pwdEl = document.getElementById(`pwd-${id}`)
+  if (pwdEl) {
+    pwdEl.textContent = entry.showPassword ? entry.password : '••••••••'
+    pwdEl.classList.toggle('field-masked', !entry.showPassword)
+  }
 }
 
 export function filterCategory(cat: string): void {

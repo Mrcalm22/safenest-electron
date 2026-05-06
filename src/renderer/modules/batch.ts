@@ -14,7 +14,22 @@ export function toggleBatchMode(): void {
 export function toggleSelectItem(id: string): void {
   if (store.selectedItems.has(id)) store.selectedItems.delete(id)
   else store.selectedItems.add(id)
-  renderPasswords()
+
+  // Incremental DOM update instead of full re-render
+  const card = document.querySelector(`.password-card[onclick*="'${id}'"]`) ||
+    document.querySelector(`.password-list-item[onclick*="'${id}'"]`)
+  if (card) {
+    card.classList.toggle('selected', store.selectedItems.has(id))
+    const checkbox = card.querySelector('input[type="checkbox"]') as HTMLInputElement | null
+    if (checkbox) checkbox.checked = store.selectedItems.has(id)
+  }
+
+  // Update toolbar counts
+  let filtered = store.passwords
+  if (store.currentCategory !== 'all') filtered = filtered.filter(p => p.category === store.currentCategory)
+  const search = (document.getElementById('searchInput') as HTMLInputElement).value.toLowerCase()
+  if (search) filtered = filtered.filter(p => p.title.toLowerCase().includes(search) || p.username.toLowerCase().includes(search))
+  updateBatchToolbar(filtered)
 }
 
 export function toggleSelectAllBatch(): void {
